@@ -1,0 +1,7 @@
+redis (3:3.2.6-3) stable; urgency=medium
+
+  * Packaging last Redis 3.2.6 version  for Ubuntu 14.04 LTS
+    based on Chris Lamb <lamby@debian.org> https://github.com/lamby/pkg-redis
+
+ -- Igor Kochergin <kiv.box@gmail.com>  Wed, 11 Jan 2017 23:26:07 +0000
+

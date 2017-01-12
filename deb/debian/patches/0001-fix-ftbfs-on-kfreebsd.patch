@@ -1,0 +1,25 @@
+From: Chris Lamb <lamby@debian.org>
+Date: Fri, 30 Oct 2015 10:53:42 +0000
+Subject: Fix FTBFS on kfreebsd
+
+Filed and fixed upstream as <https://github.com/redis/hiredis/pull/254>, but
+the embedded code copy of hiredis in redis has not been updated.
+
+Debian bug: #754634
+---
+ deps/hiredis/net.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/deps/hiredis/net.c b/deps/hiredis/net.c
+index bdb84cee..ff4e77f1 100644
+--- a/deps/hiredis/net.c
++++ b/deps/hiredis/net.c
+@@ -138,7 +138,7 @@ int redisKeepAlive(redisContext *c, int interval) {
+         return REDIS_ERR;
+     }
+ #else
+-#ifndef __sun
++#if defined(__GLIBC__) && !defined(__FreeBSD_kernel__)
+     val = interval;
+     if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &val, sizeof(val)) < 0) {
+         __redisSetError(c,REDIS_ERR_OTHER,strerror(errno));
