@@ -1,0 +1,126 @@
+#!/bin/sh
+# {{ ansible_managed }}
+#
+# redis-monitor      init file for starting up the redis monitor log saver
+#
+# chkconfig:   - 20 80
+# description: Starts and stops the redis monitor log saver.
+
+PORT="6379"
+HOSTNAME=127.0.0.1
+PASSWORD=''
+[ -z ${2} ] || PORT=${2}
+[ -z ${3} ] || PASSWORD=${3}
+[ -z ${4} ] || HOSTNAME=${4}
+
+echo "/usr/bin/redis-cli -h ${HOSTNAME} -p ${PORT} -a ${PASSWORD}"
+REDIS_MODE=$(/usr/bin/redis-cli -h ${HOSTNAME} -p ${PORT} -a ${PASSWORD} info | grep "redis_mode"  | cut -d":" -f2| tr -d '\r\n')
+
+LOGROTATE_FILE="/var/log/redis/monitor/*.log {
+    daily
+    rotate 31
+    maxage 31
+    dateext
+    dateformat %Y-%m-%d.
+    extension log
+    copytruncate
+    compress
+    compressoptions -9
+    ifempty
+    missingok
+}
+"
+
+prepaire() {
+    echo "Crete dirs and logrotate configs"
+    mkdir -p /var/log/redis/monitor
+    echo "${LOGROTATE_FILE}" > /etc/logrotate.d/redis-monitor
+}
+
+check() {
+    case ${REDIS_MODE} in
+        cluster)
+            if screen -list | grep -q "redis-monitor_cluster"; then
+                echo "redis-monitor running please stop it"
+                exit 1
+            fi
+        ;;
+        standalone)
+            if screen -list | grep -q "redis-monitor_standalone"; then
+                echo "redis-monitor running please stop it"
+                exit 1
+            fi
+        ;;
+    esac
+}
+
+
+start() {
+    case ${REDIS_MODE} in
+        cluster)
+            echo "Start screen session for redis cluster mode"
+            screen -dmS redis-monitor_cluster -c "/dev/null" /bin/bash
+            echo "Starting redis-monitor log save on cluster nodes:"
+            MASTER_NODES=$(/usr/bin/redis-cli -h ${HOSTNAME} -p ${PORT} cluster nodes | grep master | cut -d" " -f2)
+            for NODE in ${MASTER_NODES}
+            do
+                NODE_IP=$(echo $NODE | cut -d":" -f1)
+                NODE_PORT=$(echo $NODE | cut -d":" -f2)
+                echo "${NODE_IP}:${NODE_PORT}"
+                screen -p 0 -S redis-monitor_cluster -X stuff "redis-cli -h ${NODE_IP} -p ${NODE_PORT} monitor >> /var/log/redis/monitor/redis_cluster_`hostname`_monitor.log & $(printf \\r)"
+            done
+            retval=$?
+            [ $retval -eq 0 ] && touch /var/run/redis/redis-monitor_cluster
+        ;;
+        standalone)
+            echo "Start screen session for redis standalone mode"
+            screen -dmS redis-monitor_standalone -c "/dev/null" /bin/bash
+            echo "Starting redis-monitor log save on cluster node: ${HOSTNAME}:${PORT}"
+            screen -p 0 -S redis-monitor_standalone -X stuff "redis-cli -h ${HOSTNAME} -p ${PORT} -a ${PASSWORD} monitor >> /var/log/redis/monitor/redis_standalone_`hostname`_monitor.log & $(printf \\r)"
+            retval=$?
+            [ $retval -eq 0 ] && touch /var/run/redis/redis-monitor_standalone
+        ;;
+    esac
+    return $retval
+}
+
+stop() {
+    case ${REDIS_MODE} in
+        cluster)
+            echo "redis-monitor cluster log save shutting down"
+            screen -S redis-monitor_cluster -X quit
+            retval=$?
+            [ $retval -eq 0 ] && rm -f /var/run/redis/redis-monitor_cluster
+        ;;
+        standalone)
+            echo "redis-monitor standalone log save shutting down"
+            screen -S redis-monitor_standalone -X quit
+            retval=$?
+            [ $retval -eq 0 ] && rm -f /var/run/redis/redis-monitor_standalone
+        ;;
+    esac
+    if [ ! -f /var/run/redis/redis-monitor_cluster ] && [ ! -f /var/run/redis/redis-monitor_standalone ];
+    then
+        echo "Remove logrotate script"
+        rm -f /etc/logrotate.d/redis-monitor
+    fi
+    return $retval
+}
+
+case ${1} in
+    start)
+        prepaire
+        check
+        start
+    ;;
+    stop)
+        stop
+    ;;
+    *)
+        echo "Usage: /etc/init.d/redis-monitor {start|stop} {port} {password} {host}"
+        exit 1
+    ;;
+
+esac
+
+exit 0

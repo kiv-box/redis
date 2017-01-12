@@ -1,0 +1,87 @@
+---
+
+- name: Install redis-server support packages
+  apt: >
+    name="{{ item }}"
+    update_cache=yes
+    cache_valid_time=10800
+  with_items:
+    - sysfsutils
+    - numactl
+
+- name: Create sysfs config
+  copy: >
+    src=hugepages.conf
+    dest=/etc/sysfs.d/hugepages.conf
+    owner=root
+    group=root
+    mode=0644
+  notify: restart sysfsutils
+  changed_when: true
+
+- name: Force reload sysfsutils
+  service: >
+    name=sysfsutils
+    enabled=yes
+    state=restarted
+
+- name: Force reload sysfsutils just in cace
+  command: /etc/init.d/sysfsutils restart
+
+- name: Install /etc/sysctl.d/64-redis.conf
+  template: >
+    src=64-redis.conf.j2
+    dest=/etc/sysctl.d/64-redis.conf
+    owner=root
+    group=root
+    mode=0644
+  notify:
+    - update sysctl
+  changed_when: true
+
+- name: Force reload sysctl
+  service:
+    name=sysctl
+    enabled=yes
+    state=restarted
+
+- name: Force reload sysctl just in cace
+  command: /etc/init.d/sysctl start
+
+- name: Install redis-server packages
+  apt: >
+    name="{{ item }}={{ redis.version }}"
+    update_cache=yes
+    cache_valid_time=10800
+  with_items:
+  - redis-server
+  - redis-tools
+
+- name: Install redis-server cluster support packages
+  apt: >
+    name=ruby
+    update_cache=yes
+    cache_valid_time=10800
+  with_items:
+    - ruby
+    - python-redis-py-cluster
+
+- name: Install redis-server cluster support gems
+  gem: >
+    name=redis
+    state=latest
+
+- name: Create redis support scripts dirrectory
+  file: >
+    path=/opt/redis
+    owner=root
+    group=root
+    mode=0750
+    state=directory
+
+- name: Run default node tasks
+  include: default.yml
+
+- name: Install redis-server standalone
+  include: nodes.yml
+  when: redis.nodes is defined

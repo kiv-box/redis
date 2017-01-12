@@ -1,0 +1,7 @@
+---
+
+redis:
+
+    nodes:
+        - { type: 'cluster', name: 'node-1', port: '8001', maxmemory: '19g', backup: yes, backup_from_master: yes }
+        - { type: 'cluster', name: 'node-2', port: '8002', maxmemory: '19g', backup: yes, backup_from_master: yes }

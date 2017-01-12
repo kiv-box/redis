@@ -1,0 +1,7 @@
+---
+
+- name: restart sysfsutils
+  service: name=sysfsutils state=restarted
+
+- name: update sysctl
+  service: name=sysctl state=restarted

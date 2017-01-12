@@ -1,0 +1,76 @@
+#!/bin/bash
+# {{ ansible_managed }}
+#
+
+# Parameters
+#
+SERVICE='{{ backup.service }}'
+TRY='1800'
+
+DATE_PATH="$(date +%Y)/$(date +%m)/$(date +%d)"
+BACKUP_PATH="/backup/auto/${SERVICE}/${DATE_PATH}/"
+
+export PATH=$PATH:/usr/local/bin/:/usr/bin
+
+{% if (item is defined) and (item.port is defined) %}
+DUMP_LOCATION=$(cat /etc/redis/{{ item.port }}.conf | grep ^dir | awk '{ print $2}')
+DUMP_NAME=$(cat /etc/redis/{{ item.port }}.conf | grep ^dbfilename | awk '{ print $2}')
+BACKUP_LOG="${BACKUP_PATH}$(echo ${DATE_PATH} | tr '/' '-')-${DUMP_NAME}-{{ item.name }}.log"
+{% if (item is defined) and (item.password is defined) %}
+CLI='redis-cli -p {{ item.port }} -a {{ item.password}}'
+{% else %}
+CLI='redis-cli -p {{ item.port }}'
+{% endif %}
+{% endif %}
+
+# Main action
+#
+mkdir -p ${BACKUP_PATH}
+date > ${BACKUP_LOG}
+
+{% if (item is defined) and (item.backup_from_master is defined) and (item.backup_from_master == false) %}
+ROLE=$(echo info | ${CLI} | grep 'role:' | cut -d":" -f2 | tr -d '\r\n')
+if [ "${ROLE}" != "slave" ]
+then
+    echo "$(date) !!! WARNING !!! Redis node is not slave, script only works on slaves" >> ${BACKUP_LOG}
+    exit 1
+fi
+{% endif %}
+
+echo BGSAVE | ${CLI} >> ${BACKUP_LOG}
+sleep 5
+
+while [ $TRY -gt 0 ]
+do
+    BG=$(echo 'info Persistence' | ${CLI} | grep 'rdb_bgsave_in_progress:' | cut -d":" -f2 | tr -d '\r\n')
+    OK=$(echo 'info Persistence' | ${CLI} | grep 'rdb_last_bgsave_status:' | cut -d":" -f2 | tr -d '\r\n')
+
+    sleep 1
+    TRY=$((TRY - 1))
+    echo "$(date) ...Bg save is still working..." >> ${BACKUP_LOG}
+
+    if [[ "${BG}" = "0" ]] && [[ "$OK" = "ok" ]]
+    then
+        redis-check-rdb ${DUMP_LOCATION}/${DUMP_NAME} >> ${BACKUP_LOG}
+        if [ "$?" != "0"   ]
+        then
+            echo "$(date) !!! WARNING !!! ${DUMP_LOCATION}/${DUMP_NAME} file is corrupted" >> ${BACKUP_LOG}
+            exit 1
+        fi
+        echo "$(date) Check dump file is not corrupted done" >> ${BACKUP_LOG}
+        echo "$(date) Move and compress..." >> ${BACKUP_LOG}
+        gzip -fc ${DUMP_LOCATION}/${DUMP_NAME} > ${BACKUP_PATH}/$(echo ${DATE_PATH} | tr '/' '-')-${DUMP_NAME}-{{ item.name }}.gz
+        if [ "$?" != "0"   ]
+        then
+            echo "$(date) !!! WARNING !!! Move and compress dump ${DUMP_LOCATION}/${DUMP_NAME} failed" >> ${BACKUP_LOG}
+            exit 1
+        fi
+        echo "$(date) Move and compress done" >> ${BACKUP_LOG}
+        date >> ${BACKUP_LOG}
+        exit 0
+    fi
+done
+
+echo "$(date) !!! WARNING !!! Dump memory to rdb error" >> ${BACKUP_LOG}
+date >> ${BACKUP_LOG}
+exit 1

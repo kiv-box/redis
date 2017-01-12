@@ -1,0 +1,24 @@
+---
+
+# Host specific
+# redis:
+#     nodes:
+#         - {
+#             type: 'standalone',
+#             name: 'redis-1',
+#             port: '7001',
+#             maxmemory: '28g',
+#             backup: yes,
+#             backup_from_master: yes,
+#             password: '12345678'
+#           }
+#     nodes:
+#         - {
+#             type: 'standalone',
+#             name: 'redis-2',
+#             port: '7002',
+#             maxmemory: '28g',
+#             backup: yes,
+#             backup_from_master: yes,
+#             password: '12345678'
+#           }

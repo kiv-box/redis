@@ -1,0 +1,41 @@
+---
+
+- name: Check default node is installed
+  stat: path=/etc/redis/redis.conf
+  register: default_node_installed
+
+- name: Stop default redis-server
+  service: >
+    name=redis-server
+    enabled=no
+    state=stopped
+  when: default_node_installed.stat.exists is defined and default_node_installed.stat.exists
+
+- name: Remove default redis-server inits
+  command: 'update-rc.d -f redis-server remove'
+  when: default_node_installed.stat.exists is defined and default_node_installed.stat.exists
+
+- name: Remove default redis-server artifacts
+  file: >
+    path="{{ item }}"
+    state=absent
+  with_items:
+    - /etc/default/redis-server
+    - /etc/init.d/redis-server
+    - /etc/redis/redis.conf
+    - /etc/redis/sentinel.conf
+    - /etc/redis/redis-server.post-down.d
+    - /etc/redis/redis-server.post-up.d
+    - /etc/redis/redis-server.pre-down.d
+    - /etc/redis/redis-server.pre-up.d
+    - /var/log/redis/redis-server.log
+    - /var/run/redis/redis-server.pid
+    - /opt/redis-backup.sh
+  when: default_node_installed.stat.exists is defined and default_node_installed.stat.exists
+
+- name: Generate redis-server standalone backup crons
+  cron: >
+    name="/opt/redis-backup.sh"
+    job="/opt/redis-backup.sh"
+    state=absent
+  when: default_node_installed.stat.exists is defined and default_node_installed.stat.exists

@@ -1,0 +1,14 @@
+---
+
+redis:
+
+    nodes:
+        - {
+            type: 'standalone',
+            name: 'default',
+            port: '6379',
+            maxmemory: '28g',
+            backup: yes,
+            backup_from_master: yes,
+            password: '12345678'
+          }

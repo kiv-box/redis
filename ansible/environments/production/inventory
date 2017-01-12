@@ -1,0 +1,10 @@
+[cluster]
+env-dc-project-role-1.domain
+env-dc-project-role-2.domain
+env-dc-project-role-3.domain
+env-dc-project-role-4.domain
+
+[standalone]
+env-dc-project-role-10.domain
+env-dc-project-role-11.domain
+

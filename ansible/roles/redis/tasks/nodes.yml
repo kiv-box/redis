@@ -1,0 +1,83 @@
+---
+
+- name: Generate redis-server configs
+  template: >
+    src=default.j2
+    dest="/etc/default/redis-server-{{ item.port }}"
+  with_items:
+     - "{{ redis.nodes }}"
+
+- name: Generate redis-server init scripts
+  template: >
+    src=init.j2
+    dest="/etc/init.d/redis-server-{{ item.port }}"
+    owner=root
+    group=root
+    mode=0750
+  with_items:
+     - "{{ redis.nodes }}"
+
+- name: Generate redis-server config files
+  template: >
+    src=redis.conf.j2
+    dest="/etc/redis/{{ item.port }}.conf"
+    owner=root
+    group=redis
+    mode=0640
+  with_items:
+     - "{{ redis.nodes }}"
+
+- name: Generate redis-server backup scripts
+  template: >
+    src=backup.sh.j2
+    dest="/opt/redis/redis-backup-{{ item.port }}-{{ item.name }}.sh"
+    owner=root
+    group=root
+     mode=0750
+  with_items:
+     - "{{ redis.nodes }}"
+  when: item.backup
+
+- name: Generate redis-server backup crons
+  cron: >
+    name="/opt/redis/redis-backup-{{ item.port }}-{{ item.name }}.sh"
+    job="/opt/redis/redis-backup-{{ item.port }}-{{ item.name }}.sh"
+    user="root"
+    minute="0"
+    hour="{{ 6 | random }}"
+  with_items:
+     - "{{ redis.nodes }}"
+  when: item.backup
+
+- name: Generate redis-server monitor scripts
+  template: >
+    src=monitor.sh.j2
+    dest="/opt/redis/redis-monitor.sh"
+    owner=root
+    group=root
+    mode=0750
+
+- name: Generate redis-server cli autologin scripts
+  template: >
+    src=run.sh.j2
+    dest="/opt/redis/redis-cli-{{ item.port }}-{{ item.name }}.sh"
+    owner=root
+    group=root
+    mode=0750
+  with_items:
+     - "{{ redis.nodes }}"
+
+- name: "Checking redis-server-{{ item.port }} start-on-boot status"
+  service: >
+    name="redis-server-{{ item.port }}"
+    enabled=yes
+  with_items:
+     - "{{ redis.nodes }}"
+
+- name: "Checking redis-server-{{ item.port }} state"
+  service: >
+    name="redis-server-{{ item.port }}"
+    state="{{ state }}"
+  with_items:
+     - "{{ redis.nodes }}"
+  when: state is defined

@@ -1,0 +1,31 @@
+---
+
+# Template for standalone or cluster multi node instalation
+#
+# Please use 7xxx ports for standalone nodes and 8xxx for cluster
+#
+#redis:
+#    version: 'x.x.x'
+#
+#    nodes:
+#        - {
+#            type: 'standalone', # or cluster # required
+#            name: 'instance_name', # required
+#            port: 'instance_port', # required
+#            maxmemory: '64g',
+#            backup: no,
+#            backup_from_master: false,
+#            password: 'pass'
+#            slaveof_ip: 'master node ip',
+#            slaveof_port: 'master_node_port',
+#            slaveof_pass: 'master_node_password'
+#          }
+#
+
+redis:
+    version: '3:3.2.6-3'
+    nodes:
+        - { type: 'standalone', name: 'default', port: '6379' }
+
+backup:
+    service: redis

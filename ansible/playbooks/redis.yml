@@ -1,0 +1,9 @@
+---
+
+- name: Setup redis
+  hosts: all
+  become: yes
+
+  roles:
+    - redis
+

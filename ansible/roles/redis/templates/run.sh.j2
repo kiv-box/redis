@@ -1,0 +1,15 @@
+#!/bin/bash
+
+{% if (item is defined) and (item.port is defined) %}
+{% if (item is defined) and (item.password is defined) %}
+redis-cli -p {{ item.port }} -a {{ item.password}}
+{% else %}
+redis-cli -p {{ item.port }}
+{% endif %}
+{% else %}
+{% if (item is defined) and (item.password is defined) %}
+redis-cli -a {{ item.password}}
+{% else %}
+redis-cli
+{% endif %}
+{% endif %}

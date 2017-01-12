@@ -1,0 +1,29 @@
+# Ansible requirementss
+#  paramiko
+#  PyYAML
+#  jinja2
+#  httplib2
+#  passlib
+#  six
+
+# These are needed for various optional features
+#  python-memcached
+#  redis
+
+# Test requirements
+#  unittest2
+#  mock
+#  nose
+
+# Ubuntu 14.04 req
+apt-get install \
+        python-pip \
+        python-dev \
+        python-paramiko \
+        python-yaml \
+        python-jinja2 \
+        python-httplib2 \
+        python-six \
+        python-passlib \
+        redis-server \
+        python-redis
